@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafePaws — Алматы картасы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --green: #1D9E75;
+    --green-light: #5DCAA5;
+    --green-dark: #0F6E56;
+    --amber: #EF9F27;
+    --red: #E24B4A;
+    --bg: #08100d;
+    --bg2: #101a15;
+    --card: #17231d;
+    --text: #ecf7f1;
+    --muted: #7fb19b;
+    --border: rgba(29,158,117,0.18);
+    --shadow: 0 18px 60px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; min-height:100%; }
+  body {
+    font-family:'Space Grotesk', sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(29,158,117,0.12), transparent 30%),
+      radial-gradient(circle at top right, rgba(239,159,39,0.06), transparent 28%),
+      linear-gradient(180deg, #07110d 0%, #09100c 60%, #060a08 100%);
+    color:var(--text);
+  }
+  a { color:inherit; text-decoration:none; }
+
+  .page {
+    min-height:100vh;
+    padding:1.2rem;
+  }
+
+  .topbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    padding:1rem 1.2rem;
+    border:1px solid var(--border);
+    border-radius:20px;
+    background:rgba(10,16,13,0.8);
+    backdrop-filter:blur(14px);
+    box-shadow:var(--shadow);
+  }
+  .back-link {
+    display:inline-flex;
+    align-items:center;
+    gap:0.55rem;
+    padding:0.72rem 1rem;
+    border-radius:999px;
+    border:1px solid rgba(93,202,165,0.25);
+    background:rgba(29,158,117,0.12);
+    color:var(--green-light);
+    font-size:0.92rem;
+    font-weight:600;
+  }
+  .brand {
+    text-align:center;
+    flex:1;
+  }
+  .eyebrow {
+    color:var(--green-light);
+    font-size:0.74rem;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    margin-bottom:0.35rem;
+  }
+  .brand h1 {
+    font-family:'Syne', sans-serif;
+    font-size:clamp(1.6rem, 3vw, 2.4rem);
+    margin:0;
+    line-height:1.1;
+  }
+  .brand p {
+    margin:0.45rem auto 0;
+    max-width:720px;
+    color:var(--muted);
+    font-size:0.94rem;
+    line-height:1.6;
+  }
+  .status-pill {
+    padding:0.6rem 0.9rem;
+    border-radius:999px;
+    background:rgba(29,158,117,0.12);
+    border:1px solid rgba(29,158,117,0.2);
+    color:var(--green-light);
+    font-size:0.82rem;
+    white-space:nowrap;
+  }
+
+  .stats {
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:0.8rem;
+    margin:1rem 0;
+  }
+  .stat {
+    background:rgba(23,35,29,0.92);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:1rem;
+    box-shadow:var(--shadow);
+  }
+  .stat-num {
+    font-family:'Syne', sans-serif;
+    font-size:1.9rem;
+    font-weight:800;
+    color:var(--green-light);
+    line-height:1;
+    margin-bottom:0.3rem;
+  }
+  .stat-label {
+    color:var(--muted);
+    font-size:0.82rem;
+    line-height:1.45;
+  }
+
+  .content {
+    display:grid;
+    grid-template-columns:360px 1fr;
+    gap:1rem;
+    align-items:stretch;
+  }
+
+  .panel,
+  .map-shell,
+  .list-card,
+  .filter-bar,
+  .legend,
+  .detail-card {
+    background:rgba(23,35,29,0.9);
+    border:1px solid var(--border);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+  }
+
+  .panel {
+    padding:1.1rem;
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+  }
+  .panel h2 {
+    font-family:'Syne', sans-serif;
+    font-size:1.5rem;
+    margin:0;
+  }
+  .panel p {
+    margin:0;
+    color:var(--muted);
+    font-size:0.92rem;
+    line-height:1.6;
+  }
+
+  .filter-bar {
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.6rem;
+    padding:0.85rem;
+  }
+  .filter-btn {
+    border:none;
+    background:rgba(255,255,255,0.03);
+    color:var(--muted);
+    border:1px solid rgba(127,177,155,0.16);
+    padding:0.55rem 0.85rem;
+    border-radius:999px;
+    font:inherit;
+    font-size:0.82rem;
+    cursor:pointer;
+    transition:all 0.2s ease;
+  }
+  .filter-btn:hover { color:var(--text); border-color:rgba(93,202,165,0.35); }
+  .filter-btn.active {
+    background:rgba(29,158,117,0.18);
+    color:var(--green-light);
+    border-color:rgba(29,158,117,0.35);
+  }
+
+  .legend {
+    padding:1rem;
+    display:grid;
+    gap:0.8rem;
+  }
+  .legend-title {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .legend-title h3 {
+    margin:0;
+    font-size:1rem;
+  }
+  .legend-row {
+    display:flex;
+    align-items:flex-start;
+    gap:0.75rem;
+    color:var(--muted);
+    font-size:0.84rem;
+    line-height:1.45;
+  }
+  .dot {
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    flex:0 0 12px;
+    margin-top:0.2rem;
+  }
+  .dot.safe { background:var(--green); }
+  .dot.watch { background:var(--amber); }
+  .dot.danger { background:var(--red); }
+  .dot.cat { background:#c084fc; }
+  .dot.dog { background:#60a5fa; }
+  .dot.raccoon { background:#f59e0b; }
+
+  .detail-card {
+    padding:1rem;
+    min-height:170px;
+  }
+  .detail-card h3 {
+    margin:0 0 0.45rem;
+    font-size:1.05rem;
+  }
+  .detail-chip {
+    display:inline-flex;
+    align-items:center;
+    gap:0.35rem;
+    padding:0.25rem 0.6rem;
+    border-radius:999px;
+    font-size:0.7rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    margin-bottom:0.85rem;
+  }
+  .detail-chip.safe { background:rgba(29,158,117,0.15); color:var(--green-light); }
+  .detail-chip.watch { background:rgba(239,159,39,0.14); color:var(--amber); }
+  .detail-chip.danger { background:rgba(226,75,74,0.14); color:#fb7185; }
+  .detail-meta {
+    display:grid;
+    gap:0.35rem;
+    margin-top:0.7rem;
+    color:var(--muted);
+    font-size:0.84rem;
+  }
+  .detail-meta strong { color:var(--text); }
+  .detail-note {
+    margin-top:0.8rem;
+    padding-top:0.8rem;
+    border-top:1px solid rgba(127,177,155,0.15);
+    color:var(--muted);
+    font-size:0.84rem;
+    line-height:1.55;
+  }
+
+  .list {
+    display:grid;
+    gap:0.75rem;
+    max-height:360px;
+    overflow:auto;
+    padding-right:0.2rem;
+  }
+  .list-card {
+    display:flex;
+    gap:0.8rem;
+    align-items:flex-start;
+    padding:0.85rem;
+    cursor:pointer;
+    transition:transform 0.2s ease, border-color 0.2s ease;
+  }
+  .list-card:hover {
+    transform:translateY(-2px);
+    border-color:rgba(93,202,165,0.3);
+  }
+  .list-icon {
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.1rem;
+    flex:0 0 42px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(127,177,155,0.12);
+  }
+  .list-main h4 {
+    margin:0;
+    font-size:0.95rem;
+  }
+  .list-main p {
+    margin:0.18rem 0 0;
+    color:var(--muted);
+    font-size:0.8rem;
+    line-height:1.45;
+  }
+  .list-tags {
+    display:flex;
+    gap:0.35rem;
+    flex-wrap:wrap;
+    margin-top:0.45rem;
+  }
+  .tag {
+    padding:0.18rem 0.45rem;
+    border-radius:999px;
+    font-size:0.68rem;
+    border:1px solid rgba(127,177,155,0.16);
+    color:var(--muted);
+  }
+  .tag.safe { color:var(--green-light); border-color:rgba(29,158,117,0.25); }
+  .tag.watch { color:var(--amber); border-color:rgba(239,159,39,0.25); }
+  .tag.danger { color:#fb7185; border-color:rgba(226,75,74,0.25); }
+
+  .map-shell {
+    position:relative;
+    overflow:hidden;
+    min-height:760px;
+  }
+  #almatyMap {
+    width:100%;
+    height:100%;
+    min-height:760px;
+    z-index:1;
+  }
+  .map-overlay {
+    position:absolute;
+    top:1rem;
+    left:1rem;
+    right:1rem;
+    z-index:500;
+    display:flex;
+    gap:0.75rem;
+    flex-wrap:wrap;
+    pointer-events:none;
+  }
+  .overlay-pill {
+    pointer-events:none;
+    backdrop-filter:blur(10px);
+    background:rgba(9,16,12,0.78);
+    border:1px solid rgba(93,202,165,0.18);
+    color:var(--text);
+    padding:0.55rem 0.8rem;
+    border-radius:999px;
+    font-size:0.78rem;
+  }
+
+  .animal-pin {
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.2rem;
+    border:3px solid #fff;
+    box-shadow:0 10px 24px rgba(0,0,0,0.28);
+    position:relative;
+  }
+  .animal-pin::after {
+    content:'';
+    position:absolute;
+    inset:-5px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  .animal-pin.safe {
+    background:var(--green);
+  }
+  .animal-pin.watch {
+    background:var(--amber);
+  }
+  .animal-pin.danger {
+    background:var(--red);
+  }
+  .marker-label {
+    background:rgba(11,18,14,0.95);
+    border:1px solid rgba(127,177,155,0.18);
+    color:var(--text);
+    border-radius:999px;
+    padding:0.25rem 0.55rem;
+    font-size:0.72rem;
+    box-shadow:0 10px 22px rgba(0,0,0,0.22);
+  }
+  .leaflet-popup-content-wrapper,
+  .leaflet-popup-tip {
+    background:#0d1511;
+    color:var(--text);
+    border-radius:16px;
+  }
+  .leaflet-popup-content {
+    margin:0.85rem 1rem;
+    font-family:'Space Grotesk', sans-serif;
+  }
+  .popup-title {
+    font-size:1rem;
+    font-weight:700;
+    margin-bottom:0.35rem;
+  }
+  .popup-sub {
+    color:var(--muted);
+    font-size:0.8rem;
+    margin-bottom:0.65rem;
+  }
+  .popup-row {
+    display:flex;
+    justify-content:space-between;
+    gap:1rem;
+    padding:0.28rem 0;
+    font-size:0.82rem;
+    border-top:1px solid rgba(127,177,155,0.12);
+  }
+  .popup-row:first-of-type { border-top:none; }
+  .popup-row span:first-child { color:var(--muted); }
+
+  .footer-note {
+    margin-top:1rem;
+    color:var(--muted);
+    font-size:0.82rem;
+    line-height:1.55;
+  }
+
+  @media (max-width: 1100px) {
+    .content { grid-template-columns:1fr; }
+    .map-shell, #almatyMap { min-height:620px; }
+    .stats { grid-template-columns:repeat(2, 1fr); }
+  }
+  @media (max-width: 720px) {
+    .page { padding:0.8rem; }
+    .topbar {
+      flex-direction:column;
+      align-items:stretch;
+    }
+    .brand { text-align:left; }
+    .status-pill { align-self:flex-start; }
+    .stats { grid-template-columns:1fr; }
+    .map-shell, #almatyMap { min-height:560px; }
+    .overlay-pill { font-size:0.72rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="back-link" href="safepaws.html">← SafePaws басты бетіне</a>
+    <div class="brand">
+      <div class="eyebrow">Интерактивті карта · Алматы</div>
+      <h1>Жануарлардың қауіп картасы</h1>
+      <p>Картада қызыл, сары және жасыл нүктелер арқылы жануардың түрі, тәуекел деңгейі және бақылау себебі көрсетіледі. Бұл оқу-демо нұсқа SafePaws жобасының карталық модулін түсіндіреді.</p>
+    </div>
+    <div class="status-pill">HTML + Leaflet демо</div>
+  </header>
+
+  <section class="stats" aria-label="Қысқаша статистика">
+    <div class="stat">
+      <div class="stat-num" id="totalCount">0</div>
+      <div class="stat-label">Картадағы нүктелер</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="safeCount">0</div>
+      <div class="stat-label">Қауіпсіз санат</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="watchCount">0</div>
+      <div class="stat-label">Бақылауда санат</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="dangerCount">0</div>
+      <div class="stat-label">Қауіпті санат</div>
+    </div>
+  </section>
+
+  <main class="content">
+    <aside class="panel">
+      <div>
+        <h2>Белгілеу түсіндірмесі</h2>
+        <p>Жасыл нүкте — қауіпсіз немесе тыныш жануар. Сары нүкте — қосымша бақылау қажет. Қызыл нүкте — агрессивті немесе қауіпті мінез-құлық туралы хабар түскен жануар.</p>
+      </div>
+
+      <div class="filter-bar" id="filterBar" aria-label="Фильтр">
+        <button class="filter-btn active" data-filter="all">Барлығы</button>
+        <button class="filter-btn" data-filter="safe">Қауіпсіз</button>
+        <button class="filter-btn" data-filter="watch">Бақылауда</button>
+        <button class="filter-btn" data-filter="danger">Қауіпті</button>
+      </div>
+
+      <div class="legend">
+        <div class="legend-title">
+          <h3>Түстер мен түрлер</h3>
+          <span style="color:var(--muted);font-size:0.78rem;">Легенда</span>
+        </div>
+        <div class="legend-row"><span class="dot safe"></span><span>Жасыл: қауіпсіз, адамдарға бейім жануар</span></div>
+        <div class="legend-row"><span class="dot watch"></span><span>Сары: белгісіз, бақылау қажет немесе сирек түр</span></div>
+        <div class="legend-row"><span class="dot danger"></span><span>Қызыл: агрессивті немесе қауіпті жағдай</span></div>
+        <div class="legend-row"><span class="dot cat"></span><span>Мысық</span></div>
+        <div class="legend-row"><span class="dot dog"></span><span>Ит</span></div>
+        <div class="legend-row"><span class="dot raccoon"></span><span>Енот / сирек түр</span></div>
+      </div>
+
+      <div class="detail-card" id="detailCard">
+        <div class="detail-chip safe" id="detailChip">Қауіпсіз</div>
+        <h3 id="detailTitle">Panfilov Park — мысық</h3>
+        <div class="detail-meta" id="detailMeta">
+          <div><strong>Орны:</strong> Панфилов паркі, Алматы</div>
+          <div><strong>Түрі:</strong> Мысық</div>
+          <div><strong>Статус:</strong> Қауіпсіз</div>
+        </div>
+        <div class="detail-note" id="detailNote">
+          Тыныш мінез-құлық байқалған. Жақын маңнан өткенде қауіп төмен.
+        </div>
+      </div>
+
+      <div>
+        <h2 style="font-size:1.15rem;margin-bottom:0.7rem;">Нүктелер тізімі</h2>
+        <div class="list" id="markerList"></div>
+      </div>
+
+      <div class="footer-note">
+        Бұл бетке Angular қажет емес: сіз сұраған функционал бір HTML бетте карта, маркер, фильтр және түсіндірме үшін оңай іске асады. Егер қаласаңыз, келесі қадамда осыны Angular жобасына ауыстырамын.
+      </div>
+    </aside>
+
+    <section class="map-shell">
+      <div class="map-overlay">
+        <div class="overlay-pill">Алматы қаласы</div>
+        <div class="overlay-pill">Жасыл = қауіпсіз</div>
+        <div class="overlay-pill">Сары = бақылауда</div>
+        <div class="overlay-pill">Қызыл = қауіпті</div>
+      </div>
+      <div id="almatyMap"></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const points = [
+    {
+      id: 1,
+      name: 'Panfilov Park — мысық',
+      city: 'Панфилов паркі, Алматы',
+      type: 'Мысық',
+      category: 'safe',
+      categoryLabel: 'Қауіпсіз',
+      icon: '🐈',
+      lat: 43.2634,
+      lng: 76.9531,
+      note: 'Тыныш мінез-құлық байқалған. Жақын маңнан өткенде қауіп төмен.',
+      advice: 'Жақындауға болады, бірақ жануарды үркітпеу ұсынылады.'
+    },
+    {
+      id: 2,
+      name: 'Sayran — ит',
+      city: 'Сайран көлі маңы, Алматы',
+      type: 'Ит',
+      category: 'danger',
+      categoryLabel: 'Қауіпті',
+      icon: '🐕',
+      lat: 43.2459,
+      lng: 76.8559,
+      note: 'Қайталанған агрессивті мінез-құлық туралы хабар түскен.',
+      advice: 'Жақындамаңыз және ересектерге немесе қызметке хабарлаңыз.'
+    },
+    {
+      id: 3,
+      name: 'Botanical Garden — мысық',
+      city: 'Ботаникалық бақ, Алматы',
+      type: 'Мысық',
+      category: 'safe',
+      categoryLabel: 'Қауіпсіз',
+      icon: '🐈',
+      lat: 43.2079,
+      lng: 76.9154,
+      note: 'Қоғамдық аймаққа үйренген, бақылау деректері тұрақты.',
+      advice: 'Қауіп төмен, бірақ жануарға тамақ бермеу ұсынылады.'
+    },
+    {
+      id: 4,
+      name: 'Al-Farabi Ave — ит',
+      city: 'Әл-Фараби даңғылы, Алматы',
+      type: 'Ит',
+      category: 'watch',
+      categoryLabel: 'Бақылауда',
+      icon: '🐕',
+      lat: 43.2246,
+      lng: 76.9451,
+      note: 'Жаңа хабарлама тіркелді. Мінез-құлқы толық анықталмаған.',
+      advice: 'Абай болыңыз, қашықтықты сақтаңыз.'
+    },
+    {
+      id: 5,
+      name: 'Almaty Zoo — енот',
+      city: 'Алматы хайуанаттар бағы маңы',
+      type: 'Енот',
+      category: 'watch',
+      categoryLabel: 'Бақылауда',
+      icon: '🦝',
+      lat: 43.2435,
+      lng: 76.9570,
+      note: 'Сирек түр, қоршаған ортаға бейімделіп жүргені белгіленген.',
+      advice: 'Жақындамаңыз, бақылап отырыңыз және фотоны тіркеңіз.'
+    },
+    {
+      id: 6,
+      name: 'Auezov District — ит',
+      city: 'Әуезов ауданы, Алматы',
+      type: 'Ит',
+      category: 'danger',
+      categoryLabel: 'Қауіпті',
+      icon: '🐕',
+      lat: 43.2367,
+      lng: 76.8612,
+      note: 'Бірнеше тұрғын шағымданған агрессивті жануар.',
+      advice: 'Жақындамаңыз және ветеринарлық қызметке хабарлаңыз.'
+    },
+    {
+      id: 7,
+      name: 'Medeu road — енот',
+      city: 'Медеу бағыты, Алматы',
+      type: 'Енот',
+      category: 'watch',
+      categoryLabel: 'Бақылауда',
+      icon: '🦝',
+      lat: 43.1848,
+      lng: 77.0243,
+      note: 'Сирек кездесетін жануар туралы жалғыз белгі бар.',
+      advice: 'Суретке түсіріп, орнын картаға жүктеу жеткілікті.'
+    },
+    {
+      id: 8,
+      name: 'Medeu valley — мысық',
+      city: 'Медеу шатқалы, Алматы',
+      type: 'Мысық',
+      category: 'safe',
+      categoryLabel: 'Қауіпсіз',
+      icon: '🐈',
+      lat: 43.1709,
+      lng: 77.0631,
+      note: 'Қозғалысы тыныш, қауіпті әрекет байқалмаған.',
+      advice: 'Қашықтан бақылау жеткілікті.'
+    }
+  ];
+
+  const map = L.map('almatyMap', {
+    zoomControl: true,
+    scrollWheelZoom: true
+  }).setView([43.2389, 76.8897], 11.8);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const markers = [];
+  const markerList = document.getElementById('markerList');
+  const detailCard = document.getElementById('detailCard');
+  const detailChip = document.getElementById('detailChip');
+  const detailTitle = document.getElementById('detailTitle');
+  const detailMeta = document.getElementById('detailMeta');
+  const detailNote = document.getElementById('detailNote');
+
+  function createIcon(point) {
+    return L.divIcon({
+      className: '',
+      html: `
+        <div class="animal-pin ${point.category}">${point.icon}</div>
+      `,
+      iconSize: [42, 42],
+      iconAnchor: [21, 42],
+      popupAnchor: [0, -38]
+    });
+  }
+
+  function popupHtml(point) {
+    return `
+      <div class="popup-title">${point.name}</div>
+      <div class="popup-sub">${point.city}</div>
+      <div class="popup-row"><span>Түрі</span><strong>${point.type}</strong></div>
+      <div class="popup-row"><span>Категория</span><strong>${point.categoryLabel}</strong></div>
+      <div class="popup-row"><span>Тәуекел</span><strong>${point.category === 'danger' ? 'Жоғары' : point.category === 'watch' ? 'Орташа' : 'Төмен'}</strong></div>
+      <div class="popup-row"><span>Ұсыныс</span><strong>${point.advice}</strong></div>
+    `;
+  }
+
+  function renderDetail(point) {
+    detailChip.className = `detail-chip ${point.category}`;
+    detailChip.textContent = point.categoryLabel;
+    detailTitle.textContent = point.name;
+    detailMeta.innerHTML = `
+      <div><strong>Орны:</strong> ${point.city}</div>
+      <div><strong>Түрі:</strong> ${point.type}</div>
+      <div><strong>Статус:</strong> ${point.categoryLabel}</div>
+    `;
+    detailNote.textContent = point.note;
+  }
+
+  function buildListItem(point, marker) {
+    const card = document.createElement('div');
+    card.className = 'list-card';
+    card.dataset.category = point.category;
+    card.innerHTML = `
+      <div class="list-icon">${point.icon}</div>
+      <div class="list-main">
+        <h4>${point.name}</h4>
+        <p>${point.city}</p>
+        <div class="list-tags">
+          <span class="tag ${point.category}">${point.categoryLabel}</span>
+          <span class="tag">${point.type}</span>
+        </div>
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      map.setView([point.lat, point.lng], 14.2, { animate: true });
+      marker.openPopup();
+      renderDetail(point);
+    });
+    markerList.appendChild(card);
+    return card;
+  }
+
+  points.forEach((point) => {
+    const marker = L.marker([point.lat, point.lng], {
+      icon: createIcon(point),
+      title: point.name
+    }).addTo(map);
+
+    marker.bindTooltip(`${point.type} · ${point.categoryLabel}`, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -16],
+      className: 'marker-label',
+      opacity: 0.98
+    });
+    marker.bindPopup(popupHtml(point), { maxWidth: 260, closeButton: false });
+    marker.pointData = point;
+    markers.push({ point, marker });
+    buildListItem(point, marker);
+
+    marker.on('click', () => renderDetail(point));
+  });
+
+  function applyFilter(filter) {
+    markers.forEach(({ point, marker }) => {
+      const visible = filter === 'all' || point.category === filter;
+      if (visible) {
+        if (!map.hasLayer(marker)) {
+          marker.addTo(map);
+        }
+      } else if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    });
+
+    document.querySelectorAll('.list-card').forEach((card) => {
+      const visible = filter === 'all' || card.dataset.category === filter;
+      card.style.display = visible ? 'flex' : 'none';
+    });
+  }
+
+  document.getElementById('filterBar').addEventListener('click', (event) => {
+    const button = event.target.closest('.filter-btn');
+    if (!button) return;
+    document.querySelectorAll('.filter-btn').forEach((item) => item.classList.remove('active'));
+    button.classList.add('active');
+    applyFilter(button.dataset.filter);
+  });
+
+  document.getElementById('totalCount').textContent = points.length;
+  document.getElementById('safeCount').textContent = points.filter((item) => item.category === 'safe').length;
+  document.getElementById('watchCount').textContent = points.filter((item) => item.category === 'watch').length;
+  document.getElementById('dangerCount').textContent = points.filter((item) => item.category === 'danger').length;
+
+  renderDetail(points[0]);
+  applyFilter('all');
+</script>
+</body>
+</html>
